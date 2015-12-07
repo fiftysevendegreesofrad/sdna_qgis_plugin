@@ -1,0 +1,18 @@
+[general]
+name=Spatial Design Network Analysis
+description=Allows use of the sDNA toolbox from QGIS
+category=Analysis
+version=2.0
+qgisMinimumVersion=2.0
+
+author=Crispin Cooper
+email=zcrispin0.qgisplugins@tropic.org.uk
+
+tags=analysis,processing,network
+
+homepage=www.cardiff.ac.uk/sdna
+tracker=
+repository=
+
+experimental=False
+deprecated=False
