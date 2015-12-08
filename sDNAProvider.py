@@ -61,6 +61,7 @@ class SDNAAlgorithm(GeoAlgorithm):
 
         self.varnames = []
         self.outputnames = []
+        self.selectvaroptions = {}
         for varname,displayname,datatype,filter,default,required in self.sdnatool.getInputSpec():
             if datatype=="OFC":
                 self.outputnames+=[varname]
@@ -79,6 +80,7 @@ class SDNAAlgorithm(GeoAlgorithm):
             elif datatype=="Text":
                 if filter:
                     self.addParameter(ParameterSelection(varname,self.tr(displayname),filter))
+                    self.selectvaroptions[varname] = filter
                 else:
                     self.addParameter(ParameterString(varname,self.tr(displayname),default,False,not required))
             else:
@@ -91,6 +93,10 @@ class SDNAAlgorithm(GeoAlgorithm):
             args[outname]=output.getCompatibleFileName(self)
         for vn in self.varnames:
             args[vn]=self.getParameterValue(vn)
+            if vn in self.selectvaroptions:
+                args[vn] = self.selectvaroptions[vn][args[vn]]
+            if args[vn]==None:
+                args[vn]=""
         args["arcxytol"]=""
         args["arcztol"]=""
         
@@ -107,12 +113,12 @@ class SDNAAlgorithm(GeoAlgorithm):
                
         progress.setInfo(syntax.__repr__())    
         
+        def map_to_string(map):
+            return '"'+";".join((k+"="+v for k,v in map.iteritems()))+'"'
+        
         # run command in subprocess, copy stdout/stderr back to qgis dialog
-        src=syntax["inputs"].values()[0]
-        dst=syntax["outputs"].values()[0]
-        command = "copy "+src+" "+dst
+        command = self.provider.sdnapath+os.sep+syntax["command"]+".py --im "+map_to_string(syntax["inputs"])+" --om "+map_to_string(syntax["outputs"])+" "+syntax["config"]
         progress.setInfo("Running external command: "+command)
-        ON_POSIX = 'posix' in sys.builtin_module_names
         
         # because select.select doesn't work on Windows,
         # create threads to call blocking stdout/stderr pipes
@@ -133,18 +139,31 @@ class SDNAAlgorithm(GeoAlgorithm):
                 t = Thread(target=enqueue_output, args=(pipe, self.q))
                 t.daemon = True # thread won't outlive process
                 t.start()
-                
+            
+            def _output(self):
+                self.progress.setInfo(self.prefix+self.unfinishedline.rstrip())
+            
             def poll(self):
                 while not self.q.empty():
                     char = self.q.get_nowait()
                     if char == "\n":
-                        progress.setInfo(self.prefix+self.unfinishedline)
+                        self._output()
                         self.unfinishedline=""
                     else:
                         self.unfinishedline+=char
+            
+            def flush(self):
+                self.poll()
+                if self.unfinishedline:
+                    self._output()
         
+        # fork subprocess
+        ON_POSIX = 'posix' in sys.builtin_module_names
+        environ = os.environ.copy()
+        environ["PYTHONUNBUFFERED"]="1" # equivalent to calling with "python -u"
+        del environ["PYTHONHOME"] # ensure we use system python ctypes not QGIS's embedded python ctypes
         # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
-        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX)
+        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX, env=environ)
         fout = ForwardPipeToProgress(progress,"OUT: ",p.stdout)
         ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr)
         
@@ -156,8 +175,8 @@ class SDNAAlgorithm(GeoAlgorithm):
         p.stdout.close()
         p.stderr.close()
         p.stdin.close()
-        fout.poll()
-        ferr.poll()
+        fout.flush()
+        ferr.flush()
         p.wait()
         progress.setInfo("External command completed")
 
@@ -196,9 +215,13 @@ class sDNAProvider(AlgorithmProvider):
             sdnapath = matches[0]
             if len(matches)>1:
                 QMessageBox.critical(QDialog(),"sDNA: Warning","Multiple sDNA installations found.  Using "+sdnapath)
+                
+        self.sdnapath = sdnapath
+        
+        # import sDNAUISpec
         sdnarootdir = sdnapath+os.sep+".."
         if not sdnarootdir in sys.path:
-            sys.path.insert(0,sdnarootdir)
+            sys.path.insert(0,sdnarootdir) # actualy python path not system path
         try:
             from sDNAUISpec import get_tools
         except ImportError:
