@@ -113,31 +113,27 @@ class SDNAAlgorithm(GeoAlgorithm):
         command = "copy "+src+" "+dst
         progress.setInfo("Running external command: "+command)
         ON_POSIX = 'posix' in sys.builtin_module_names
-        err_q = Queue()
-        out_q = Queue()
-        # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
-        # also create threads to handle output as select.select doesn't work with pipes on windows
-        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX)
         
-        def enqueue_output(out, queue):
-            while True:
-                data = out.read(1) # blocks
-                if not data:
-                    break
-                else:
-                    queue.put(data)
-        
-        def forward_pipe_to_queue(p,q):
-            t = Thread(target=enqueue_output, args=(p, q))
-            t.daemon = True # thread dies with the program
-            t.start()
-            
-        class ForwardQueueToProgress:
-            def __init__(self,progress,prefix,queue):
+        # because select.select doesn't work on Windows,
+        # create threads to call blocking stdout/stderr pipes
+        # and update progress when polled
+        class ForwardPipeToProgress:
+            def __init__(self,progress,prefix,pipe):
                 self.unfinishedline=""
                 self.prefix=prefix
                 self.progress=progress
-                self.q = queue
+                self.q = Queue()
+                def enqueue_output(out, queue):
+                    while True:
+                        data = out.read(1) # blocks
+                        if not data:
+                            break
+                        else:
+                            queue.put(data)
+                t = Thread(target=enqueue_output, args=(pipe, self.q))
+                t.daemon = True # thread won't outlive process
+                t.start()
+                
             def poll(self):
                 while not self.q.empty():
                     char = self.q.get_nowait()
@@ -146,27 +142,28 @@ class SDNAAlgorithm(GeoAlgorithm):
                         self.unfinishedline=""
                     else:
                         self.unfinishedline+=char
-
-        forward_pipe_to_queue(p.stdout,out_q)
-        forward_pipe_to_queue(p.stderr,err_q)
-        fqpout = ForwardQueueToProgress(progress,"OUT: ",out_q)
-        fqperr = ForwardQueueToProgress(progress,"ERR: ",err_q)
+        
+        # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
+        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX)
+        fout = ForwardPipeToProgress(progress,"OUT: ",p.stdout)
+        ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr)
         
         while p.poll() is None:
-            fqpout.poll()
-            fqperr.poll()
+            fout.poll()
+            ferr.poll()
             time.sleep(0.3)
             
         p.stdout.close()
         p.stderr.close()
         p.stdin.close()
-        fqpout.poll()
-        fqperr.poll()
+        fout.poll()
+        ferr.poll()
         p.wait()
         progress.setInfo("External command completed")
 
         # run comand in process (change syntax so command is literal command line command)
         # should make shapefile environment copy projection too
+        # make forwardpipetoprogress catch Progress: lines and update
         
         
 class sDNAProvider(AlgorithmProvider):
