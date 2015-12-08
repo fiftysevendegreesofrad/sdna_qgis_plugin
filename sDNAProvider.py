@@ -28,7 +28,7 @@ import processing
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
-import os,sys
+import os,sys,time
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
@@ -36,27 +36,15 @@ from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector, system
 from qgis.core import QgsVectorFileWriter
 
+from subprocess import PIPE, Popen, STDOUT
 try:
     from Queue import Queue, Empty
 except ImportError:
-    from queue import Queue, Empty  
-from subprocess import PIPE, Popen, STDOUT
+    from queue import Queue, Empty
+from threading import Thread
 
 sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE}
 sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER}
-
-def enqueue_output(command, queue):
-    queue.put(command+"\n\n")
-    ON_POSIX = 'posix' in sys.builtin_module_names
-    p = Popen(command+" 2>&1", shell=True, stdout=PIPE, bufsize=0, close_fds=ON_POSIX)
-    while True:
-        data = p.stdout.read(1)
-        if not data:
-            break
-        queue.put(data)
-    p.stdout.close()
-    p.wait()
-    queue.put("\nDone.\n")
 
 class SDNAAlgorithm(GeoAlgorithm):
     
@@ -119,17 +107,66 @@ class SDNAAlgorithm(GeoAlgorithm):
                
         progress.setInfo(syntax.__repr__())    
         
-        #working dummy copy:
+        # run command in subprocess, copy stdout/stderr back to qgis dialog
         src=syntax["inputs"].values()[0]
         dst=syntax["outputs"].values()[0]
         command = "copy "+src+" "+dst
-        progress.setInfo(command)
-        from shutil import copyfile
-        copyfile(src,dst)
-        copyfile(src[:-3]+"shx",dst[:-3]+"shx")
-        copyfile(src[:-3]+"dbf",dst[:-3]+"dbf")
-        #enqueue_output(command,Queue())
+        progress.setInfo("Running external command: "+command)
+        ON_POSIX = 'posix' in sys.builtin_module_names
+        err_q = Queue()
+        out_q = Queue()
+        # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
+        # also create threads to handle output as select.select doesn't work with pipes on windows
+        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX)
+        
+        def enqueue_output(out, queue):
+            while True:
+                data = out.read(1) # blocks
+                if not data:
+                    break
+                else:
+                    queue.put(data)
+        
+        def forward_pipe_to_queue(p,q):
+            t = Thread(target=enqueue_output, args=(p, q))
+            t.daemon = True # thread dies with the program
+            t.start()
+            
+        class ForwardQueueToProgress:
+            def __init__(self,progress,prefix,queue):
+                self.unfinishedline=""
+                self.prefix=prefix
+                self.progress=progress
+                self.q = queue
+            def poll(self):
+                while not self.q.empty():
+                    char = self.q.get_nowait()
+                    if char == "\n":
+                        progress.setInfo(self.prefix+self.unfinishedline)
+                        self.unfinishedline=""
+                    else:
+                        self.unfinishedline+=char
+
+        forward_pipe_to_queue(p.stdout,out_q)
+        forward_pipe_to_queue(p.stderr,err_q)
+        fqpout = ForwardQueueToProgress(progress,"OUT: ",out_q)
+        fqperr = ForwardQueueToProgress(progress,"ERR: ",err_q)
+        
+        while p.poll() is None:
+            fqpout.poll()
+            fqperr.poll()
+            time.sleep(0.3)
+            
+        p.stdout.close()
+        p.stderr.close()
+        p.stdin.close()
+        fqpout.poll()
+        fqperr.poll()
+        p.wait()
+        progress.setInfo("External command completed")
+
         # run comand in process (change syntax so command is literal command line command)
+        # should make shapefile environment copy projection too
         
         
 class sDNAProvider(AlgorithmProvider):
@@ -162,7 +199,9 @@ class sDNAProvider(AlgorithmProvider):
             sdnapath = matches[0]
             if len(matches)>1:
                 QMessageBox.critical(QDialog(),"sDNA: Warning","Multiple sDNA installations found.  Using "+sdnapath)
-        sys.path.insert(0,sdnapath+os.sep+"..")
+        sdnarootdir = sdnapath+os.sep+".."
+        if not sdnarootdir in sys.path:
+            sys.path.insert(0,sdnarootdir)
         try:
             from sDNAUISpec import get_tools
         except ImportError:
