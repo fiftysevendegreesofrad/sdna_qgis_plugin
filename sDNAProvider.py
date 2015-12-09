@@ -223,14 +223,15 @@ class sDNAProvider(AlgorithmProvider):
         if not sdnarootdir in sys.path:
             sys.path.insert(0,sdnarootdir) # actualy python path not system path
         try:
-            from sDNAUISpec import get_tools
+            import sDNAUISpec
+            reload(sDNAUISpec)
         except ImportError:
             self.installsdna()
             return
         
         # load tools
         self.alglist = []
-        for toolclass in get_tools():
+        for toolclass in sDNAUISpec.get_tools():
             qgistool = SDNAAlgorithm(toolclass())
             qgistool.provider = self
             self.alglist += [qgistool]
