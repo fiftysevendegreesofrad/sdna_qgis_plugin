@@ -88,6 +88,12 @@ class SDNAAlgorithm(GeoAlgorithm):
                 
 
     def processAlgorithm(self, progress):
+        
+        if ProcessingConfig.getSetting(ProcessingConfig.USE_SELECTED):
+            progress.setInfo("**********************************************************************\n"\
+                             "WARNING: sDNA ignores your selection and will process the entire layer\n"\
+                             "**********************************************************************")
+        
         args = {}
         for outname,output in zip(self.outputnames,self.outputs):
             args[outname]=output.getCompatibleFileName(self)
@@ -106,9 +112,17 @@ class SDNAAlgorithm(GeoAlgorithm):
         converted_inputs={}
         for name,path in syntax["inputs"].iteritems():
             if path:
-                tempfile = dataobjects.exportVectorLayer(processing.getObject(path))
-                progress.setInfo("exported "+path+" to "+tempfile)
-                converted_inputs[name]=tempfile
+                # convert inputs to shapefiles if they aren't already
+                # do this by hand rather than using dataobjects.exportVectorLayer(processing.getObject(path))
+                # as we want to ignore selection if present
+                if path[-4:].lower()!=".shp":
+                    progress.setInfo("Converting input to shapefile: "+path)
+                    tempfile = system.getTempFilename("shp")
+                    ret = QgsVectorFileWriter.writeAsVectorFormat(processing.getObject(path), tempfile, "utf-8", None, "ESRI Shapefile")
+                    assert(ret == QgsVectorFileWriter.NoError)
+                    converted_inputs[name]=tempfile
+                else:
+                    converted_inputs[name]=path
         syntax["inputs"]=converted_inputs
                
         def map_to_string(map):
@@ -146,6 +160,7 @@ class SDNAAlgorithm(GeoAlgorithm):
                     self.progress.setPercentage(float(m.group(1)))
                 else:
                     self.progress.setInfo(self.prefix+self.unfinishedline)
+                self.unfinishedline=""
             
             def poll(self):
                 while not self.q.empty():
@@ -156,7 +171,6 @@ class SDNAAlgorithm(GeoAlgorithm):
                         continue
                     if char == "\n" or self.seen_cr:
                         self._output()
-                        self.unfinishedline=""
                         if char != "\n":
                             self.unfinishedline+=char
                         self.seen_cr = False
