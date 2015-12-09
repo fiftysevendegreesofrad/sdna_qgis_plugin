@@ -28,7 +28,7 @@ import processing
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
-import os,sys,time
+import os,sys,time,re
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
@@ -129,6 +129,7 @@ class SDNAAlgorithm(GeoAlgorithm):
                 self.prefix=prefix
                 self.progress=progress
                 self.q = Queue()
+                self.regex = re.compile("Progress: ([0-9][0-9]*.?[0-9]*)%")
                 def enqueue_output(out, queue):
                     while True:
                         data = out.read(1) # blocks
@@ -141,7 +142,11 @@ class SDNAAlgorithm(GeoAlgorithm):
                 t.start()
             
             def _output(self):
-                self.progress.setInfo(self.prefix+self.unfinishedline.rstrip())
+                m = self.regex.match(self.unfinishedline.strip())
+                if m:
+                    self.progress.setPercentage(float(m.group(1)))
+                else:
+                    self.progress.setInfo(self.prefix+self.unfinishedline.rstrip())
             
             def poll(self):
                 while not self.q.empty():
@@ -164,7 +169,7 @@ class SDNAAlgorithm(GeoAlgorithm):
         del environ["PYTHONHOME"] # ensure we use system python ctypes not QGIS's embedded python ctypes
         # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
         p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX, env=environ)
-        fout = ForwardPipeToProgress(progress,"OUT: ",p.stdout)
+        fout = ForwardPipeToProgress(progress,"",p.stdout)
         ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr)
         
         while p.poll() is None:
@@ -179,11 +184,6 @@ class SDNAAlgorithm(GeoAlgorithm):
         ferr.flush()
         p.wait()
         progress.setInfo("External command completed")
-
-        # run comand in process (change syntax so command is literal command line command)
-        # should make shapefile environment copy projection too
-        # make forwardpipetoprogress catch Progress: lines and update
-        
         
 class sDNAProvider(AlgorithmProvider):
 
