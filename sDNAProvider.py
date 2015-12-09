@@ -136,7 +136,8 @@ class SDNAAlgorithm(GeoAlgorithm):
         # create threads to call blocking stdout/stderr pipes
         # and update progress when polled
         class ForwardPipeToProgress:
-            def __init__(self,progress,prefix,pipe):
+            def __init__(self,progress,prefix,pipe,outputblank):
+                self.outputblanklines=outputblank
                 self.unfinishedline=""
                 self.prefix=prefix
                 self.progress=progress
@@ -159,7 +160,8 @@ class SDNAAlgorithm(GeoAlgorithm):
                 if m:
                     self.progress.setPercentage(float(m.group(1)))
                 else:
-                    self.progress.setInfo(self.prefix+self.unfinishedline)
+                    if self.outputblanklines or self.unfinishedline!="":
+                        self.progress.setInfo(self.prefix+self.unfinishedline)
                 self.unfinishedline=""
             
             def poll(self):
@@ -188,9 +190,9 @@ class SDNAAlgorithm(GeoAlgorithm):
         environ["PYTHONUNBUFFERED"]="1" # equivalent to calling with "python -u"
         del environ["PYTHONHOME"] # ensure we use system python ctypes not QGIS's embedded python ctypes
         # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
-        p = Popen(command+" 2>&1", shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX, env=environ)
-        fout = ForwardPipeToProgress(progress,"",p.stdout)
-        ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr)
+        p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX, env=environ)
+        fout = ForwardPipeToProgress(progress,"",p.stdout,True)
+        ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr,False)
         
         while p.poll() is None:
             fout.poll()
