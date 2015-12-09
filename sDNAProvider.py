@@ -111,8 +111,6 @@ class SDNAAlgorithm(GeoAlgorithm):
                 converted_inputs[name]=tempfile
         syntax["inputs"]=converted_inputs
                
-        progress.setInfo(syntax.__repr__())    
-        
         def map_to_string(map):
             return '"'+";".join((k+"="+v for k,v in map.iteritems()))+'"'
         
@@ -130,6 +128,7 @@ class SDNAAlgorithm(GeoAlgorithm):
                 self.progress=progress
                 self.q = Queue()
                 self.regex = re.compile("Progress: ([0-9][0-9]*.?[0-9]*)%")
+                self.seen_cr = False
                 def enqueue_output(out, queue):
                     while True:
                         data = out.read(1) # blocks
@@ -146,14 +145,21 @@ class SDNAAlgorithm(GeoAlgorithm):
                 if m:
                     self.progress.setPercentage(float(m.group(1)))
                 else:
-                    self.progress.setInfo(self.prefix+self.unfinishedline.rstrip())
+                    self.progress.setInfo(self.prefix+self.unfinishedline)
             
             def poll(self):
                 while not self.q.empty():
                     char = self.q.get_nowait()
-                    if char == "\n":
+                    # treat \r and \r\n as \n
+                    if char == "\r":
+                        self.seen_cr = True
+                        continue
+                    if char == "\n" or self.seen_cr:
                         self._output()
                         self.unfinishedline=""
+                        if char != "\n":
+                            self.unfinishedline+=char
+                        self.seen_cr = False
                     else:
                         self.unfinishedline+=char
             
