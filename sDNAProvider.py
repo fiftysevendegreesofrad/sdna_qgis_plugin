@@ -60,7 +60,7 @@ class SDNAAlgorithm(GeoAlgorithm):
         self.name = self.sdnatool.alias
 
         # The branch of the toolbox under which the algorithm will appear
-        self.group = 'Spatial Design Network Analysis'
+        self.group = self.sdnatool.category
 
         self.varnames = []
         self.outputnames = []
