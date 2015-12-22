@@ -32,7 +32,7 @@ import os,sys,time,re
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
-from processing.core.outputs import OutputVector
+from processing.core.outputs import OutputVector,OutputFile
 from processing.tools import dataobjects, vector, system
 from qgis.core import QgsVectorFileWriter
 
@@ -43,7 +43,7 @@ except ImportError:
     from queue import Queue, Empty
 from threading import Thread
 
-sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE}
+sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE,None:ParameterVector.VECTOR_TYPE_ANY}
 sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER}
 
 class SDNAAlgorithm(GeoAlgorithm):
@@ -66,7 +66,7 @@ class SDNAAlgorithm(GeoAlgorithm):
         self.outputnames = []
         self.selectvaroptions = {}
         for varname,displayname,datatype,filter,default,required in self.sdnatool.getInputSpec():
-            if datatype=="OFC":
+            if datatype=="OFC" or datatype=="OutFile":
                 self.outputnames+=[varname]
             else:
                 self.varnames+=[varname]
@@ -75,9 +75,15 @@ class SDNAAlgorithm(GeoAlgorithm):
                 self.addParameter(ParameterVector(varname,self.tr(displayname),sdna_to_qgis_vectortype[filter],not required))
             elif datatype=="OFC":
                 self.addOutput(OutputVector(varname,self.tr(displayname)))
+            elif datatype=="InFile":
+                self.addParameter(ParameterFile(varname, self.tr(displayname), False, not required, filter))
+            elif datatype=="OutFile":
+                self.addOutput(OutputFile(varname,self.tr(displayname),filter))
             elif datatype=="Field":
                 fieldtype,source = filter
                 self.addParameter(ParameterTableField(varname,self.tr(displayname),source,sdna_to_qgis_fieldtype[fieldtype],not required))
+            elif datatype=="MultiField":
+                self.addParameter(ParameterString(varname,self.tr(displayname+" (field names separated by commas)"),default,False,not required))
             elif datatype=="Bool":
                 self.addParameter(ParameterBoolean(varname,self.tr(displayname),default))
             elif datatype=="Text":
@@ -99,7 +105,12 @@ class SDNAAlgorithm(GeoAlgorithm):
         
         args = {}
         for outname,output in zip(self.outputnames,self.outputs):
-            args[outname]=output.getCompatibleFileName(self)
+            if hasattr(output,"getCompatibleFileName"):
+                args[outname]=output.getCompatibleFileName(self)
+            elif hasattr(output,"getValueAsCommandLineParameter"):
+                args[outname]=output.getValueAsCommandLineParameter().replace('"','') # strip quotes - sdna adds them again
+            else:
+                assert False # don't know what to do with this output type
         for vn in self.varnames:
             args[vn]=self.getParameterValue(vn)
             if vn in self.selectvaroptions:
