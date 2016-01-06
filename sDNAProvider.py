@@ -28,7 +28,7 @@ import processing
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
-import os,sys,time,re
+import os,sys
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
@@ -36,20 +36,14 @@ from processing.core.outputs import OutputVector,OutputFile
 from processing.tools import dataobjects, vector, system
 from qgis.core import QgsVectorFileWriter
 
-from subprocess import PIPE, Popen, STDOUT
-try:
-    from Queue import Queue, Empty
-except ImportError:
-    from queue import Queue, Empty
-from threading import Thread
-
 sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE,None:ParameterVector.VECTOR_TYPE_ANY}
 sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER}
 
 class SDNAAlgorithm(GeoAlgorithm):
     
-    def __init__(self,sdnatool):
+    def __init__(self,sdnatool,provider):
         self.sdnatool = sdnatool
+        self.provider = provider
         GeoAlgorithm.__init__(self)
         
     def help(self):
@@ -139,87 +133,7 @@ class SDNAAlgorithm(GeoAlgorithm):
                     converted_inputs[name]=path
         syntax["inputs"]=converted_inputs
                
-        def map_to_string(map):
-            return '"'+";".join((k+"="+v for k,v in map.iteritems()))+'"'
-        
-        # run command in subprocess, copy stdout/stderr back to qgis dialog
-        command = self.provider.sdnapath+os.sep+syntax["command"]+".py --im "+map_to_string(syntax["inputs"])+" --om "+map_to_string(syntax["outputs"])+" "+syntax["config"]
-        progress.setInfo("Running external command: "+command)
-        
-        # because select.select doesn't work on Windows,
-        # create threads to call blocking stdout/stderr pipes
-        # and update progress when polled
-        class ForwardPipeToProgress:
-            def __init__(self,progress,prefix,pipe,outputblank):
-                self.outputblanklines=outputblank
-                self.unfinishedline=""
-                self.prefix=prefix
-                self.progress=progress
-                self.q = Queue()
-                self.regex = re.compile("Progress: ([0-9][0-9]*.?[0-9]*)%")
-                self.seen_cr = False
-                def enqueue_output(out, queue):
-                    while True:
-                        data = out.read(1) # blocks
-                        if not data:
-                            break
-                        else:
-                            queue.put(data)
-                t = Thread(target=enqueue_output, args=(pipe, self.q))
-                t.daemon = True # thread won't outlive process
-                t.start()
-            
-            def _output(self):
-                m = self.regex.match(self.unfinishedline.strip())
-                if m:
-                    self.progress.setPercentage(float(m.group(1)))
-                else:
-                    if self.outputblanklines or self.unfinishedline!="":
-                        self.progress.setInfo(self.prefix+self.unfinishedline)
-                self.unfinishedline=""
-            
-            def poll(self):
-                while not self.q.empty():
-                    char = self.q.get_nowait()
-                    # treat \r and \r\n as \n
-                    if char == "\r":
-                        self.seen_cr = True
-                        continue
-                    if char == "\n" or self.seen_cr:
-                        self._output()
-                        if char != "\n":
-                            self.unfinishedline+=char
-                        self.seen_cr = False
-                    else:
-                        self.unfinishedline+=char
-            
-            def flush(self):
-                self.poll()
-                if self.unfinishedline:
-                    self._output()
-        
-        # fork subprocess
-        ON_POSIX = 'posix' in sys.builtin_module_names
-        environ = os.environ.copy()
-        environ["PYTHONUNBUFFERED"]="1" # equivalent to calling with "python -u"
-        del environ["PYTHONHOME"] # ensure we use system python ctypes not QGIS's embedded python ctypes
-        # MUST create pipes for stdin, out and err because http://bugs.python.org/issue3905
-        p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0, close_fds=ON_POSIX, env=environ)
-        fout = ForwardPipeToProgress(progress,"",p.stdout,True)
-        ferr = ForwardPipeToProgress(progress,"ERR: ",p.stderr,False)
-        
-        while p.poll() is None:
-            fout.poll()
-            ferr.poll()
-            time.sleep(0.3)
-            
-        p.stdout.close()
-        p.stderr.close()
-        p.stdin.close()
-        fout.flush()
-        ferr.flush()
-        p.wait()
-        progress.setInfo("External command completed")
+        self.provider.runsdnacommand(syntax,self.provider.sdnapath,progress)
         
 class sDNAProvider(AlgorithmProvider):
 
@@ -254,22 +168,23 @@ class sDNAProvider(AlgorithmProvider):
                 
         self.sdnapath = sdnapath
         
-        # import sDNAUISpec
+        # import sDNAUISpec and runsdnacommand
         sdnarootdir = sdnapath+os.sep+".."
         if not sdnarootdir in sys.path:
             sys.path.insert(0,sdnarootdir) # actualy python path not system path
         try:
-            import sDNAUISpec
+            import sDNAUISpec,runsdnacommand
             reload(sDNAUISpec)
+            reload(runsdnacommand)
         except ImportError:
             self.installsdna()
             return
+        self.runsdnacommand = runsdnacommand.runsdnacommand
         
         # load tools
         self.alglist = []
         for toolclass in sDNAUISpec.get_tools():
-            qgistool = SDNAAlgorithm(toolclass())
-            qgistool.provider = self
+            qgistool = SDNAAlgorithm(toolclass(),self)
             self.alglist += [qgistool]
 
     def initializeSettings(self):
