@@ -53,7 +53,7 @@ class SDNAAlgorithm(GeoAlgorithm):
         GeoAlgorithm.__init__(self)
         
     def help(self):
-        return True, self.sdnatool.desc
+        return True, "<h2>%s</h2>%s"%(self.sdnatool.alias,self.sdnatool.desc)
         
     def defineCharacteristics(self):
         # The name that the user will see in the toolbox
