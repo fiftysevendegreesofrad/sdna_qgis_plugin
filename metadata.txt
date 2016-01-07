@@ -12,8 +12,8 @@ email=zcrispin0.qgisplugins@tropic.org.uk
 tags=analysis,processing,network,sdna
 
 homepage=www.cardiff.ac.uk/sdna
-tracker=
-repository=
+tracker=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin/issues
+repository=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin
 
 experimental=False
 deprecated=False
