@@ -1,7 +1,7 @@
 [general]
 name=Spatial Design Network Analysis
 description=Allows use of the sDNA toolbox from QGIS
-about=Allows use of the sDNA toolbox from QGIS.  sDNA version 3.0 or above must be installed first.
+about=Allows use of the sDNA toolbox from QGIS.  sDNA version 3.0 or above must be installed first from http://www.cardiff.ac.uk/sdna sDNA is spatial network analysis software particularly suited to the modelling of urban networks.  Standard sDNA currently calculates various measures of network density, gravity models, floating catchment, closeness, betweenness, convex hull and severance statistics.  These can be based on different analysis metrics (Angular, Euclidean, Custom).  Additional tools allow network preparation and statistical learning and prediction based on sDNA models.  Analyses can be weighted or unweighted; one-to-one, one-to-many, one-to-all or all-to-all.  An advanced sDNA+ version is also available which calculates hybrid metrics as well as having presets for pedestrian, cyclist and vehicle use, and the ability to output analysis geometries (network radii, geodesics, convex hulls).
 category=Analysis
 version=2.0
 qgisMinimumVersion=2.0
@@ -11,7 +11,7 @@ email=zcrispin0.qgisplugins@tropic.org.uk
 
 tags=analysis,processing,network,sdna
 
-homepage=www.cardiff.ac.uk/sdna
+homepage=http://www.cardiff.ac.uk/sdna
 tracker=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin/issues
 repository=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin
 
