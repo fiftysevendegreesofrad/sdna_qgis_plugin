@@ -2,11 +2,11 @@
 name=Spatial Design Network Analysis
 description=Allows use of the sDNA toolbox from QGIS
 about=Allows use of the sDNA toolbox from QGIS.
-sDNA version 3.0 or above must be installed first from http://www.cardiff.ac.uk/sdna 
+    sDNA version 3.0 or above must be installed first from http://www.cardiff.ac.uk/sdna 
 
-sDNA is a spatial network analysis tool with general applicability, but particularly suited to modelling urban networks.  Standard sDNA currently calculates various measures of network density, gravity models, floating catchment, closeness, betweenness, convex hull and severance statistics.  These can be based on different analysis metrics (Angular, Euclidean, Custom).  Additional tools allow network preparation, statistical learning and prediction based on sDNA models.  Analyses can be weighted or unweighted, and weights can be applied per polyline, link or unit length.
+    sDNA is a spatial network analysis tool with general applicability, but particularly suited to modelling urban networks.  Standard sDNA currently calculates various measures of network density, gravity models, floating catchment, closeness, betweenness, convex hull and severance statistics.  These can be based on different analysis metrics (Angular, Euclidean, Custom).  Additional tools allow network preparation, statistical learning and prediction based on sDNA models.  Analyses can be weighted or unweighted, and weights can be applied per polyline, link or unit length.
 
-An advanced version called sDNA+ is also available which can use arbitrary metrics from a user formula (hybrid metrics) as well as having presets for pedestrian, cyclist and vehicle use, and the ability to output analysis geometries (network radii, geodesics, convex hulls; one-to-one, one-to-many, one-to-all or all-to-all).
+    An advanced version called sDNA+ is also available which can use arbitrary metrics from a user formula (hybrid metrics) as well as having presets for pedestrian, cyclist and vehicle use, and the ability to output analysis geometries (network radii, geodesics, convex hulls; one-to-one, one-to-many, one-to-all or all-to-all).
 category=Analysis
 version=3.0
 qgisMinimumVersion=2.0
