@@ -34,7 +34,7 @@ from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
 from processing.core.outputs import OutputVector,OutputFile
 from processing.tools import dataobjects, vector, system
-from qgis.core import QgsVectorFileWriter
+from qgis.core import QgsVectorFileWriter, QgsMessageLog
 
 sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE,None:ParameterVector.VECTOR_TYPE_ANY}
 sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER}
@@ -138,69 +138,65 @@ class SDNAAlgorithm(GeoAlgorithm):
 class sDNAProvider(AlgorithmProvider):
 
     def installsdna(self):
-        QMessageBox.critical(QDialog(),"sDNA: Error","Please install sDNA version 3.0 or later (http://www.cardiff.ac.uk/sdna/) then restart QGIS.")
+        QMessageBox.critical(QDialog(),"sDNA: Error",
+        """The QGIS sDNA plugin could not find your sDNA installation.  Please 
+    - ensure sDNA version 3.0 or later is installed
+    - ensure the sDNA installation folder is set correctly in 
+      Processing -> Options -> Providers -> Spatial Design Network Analysis""")
 
     def getSupportedOutputVectorLayerExtensions(self):
         return ["shp"]
         
     def __init__(self):
         AlgorithmProvider.__init__(self)
-
+        
         # activate provider by default
         self.activate = True
         
-        # find sDNA
-        matchstring = os.sep+"sDNA"+os.sep+"bin"
-        matches = [path for path in os.environ["PATH"].split(os.pathsep)
-                   if path[-len(matchstring):]==matchstring]
+    SDNAFOLDERSETTING = "SDNA_FOLDER_SETTING"
+            
+    def initializeSettings(self):
+        AlgorithmProvider.initializeSettings(self)
+        ProcessingConfig.addSetting(Setting(self.getDescription(),sDNAProvider.SDNAFOLDERSETTING,
+            "sDNA installation folder","c:\\Program Files (x86)\\sDNA",valuetype=Setting.FOLDER))
+        
+    def unload(self):
+        AlgorithmProvider.unload(self)
+        ProcessingConfig.removeSetting(sDNAProvider.SDNAFOLDERSETTING)
+        
+    def getName(self):
+        return "sDNA"
+        
+    def getDescription(self):
+        return "Spatial Design Network Analysis"
 
-        if len(matches)==0:
-            altpath = "d:\\sdna\\arcscripts\\bin"
-            if os.path.exists(altpath):
-                sdnapath = altpath
-            else:
-                self.installsdna()
-                return
-        else:
-            sdnapath = matches[0]
-            if len(matches)>1:
-                QMessageBox.critical(QDialog(),"sDNA: Warning","Multiple sDNA installations found.  Using "+sdnapath)
-                
-        self.sdnapath = sdnapath
+    def getIcon(self):
+        return AlgorithmProvider.getIcon(self)
+
+    def _loadAlgorithms(self):
+        # create empty alglist now in case loading fails
+        self.algs = []
         
         # import sDNAUISpec and runsdnacommand
-        sdnarootdir = sdnapath+os.sep+".."
+        sdnarootdir = ProcessingConfig.getSetting(sDNAProvider.SDNAFOLDERSETTING)
+        self.sdnapath = '"'+sdnarootdir+os.sep+"bin"+'"'
+        QgsMessageLog.logMessage("sDNA root: "+str(sdnarootdir), 'sDNA')
         if not sdnarootdir in sys.path:
             sys.path.insert(0,sdnarootdir) # actualy python path not system path
         try:
             import sDNAUISpec,runsdnacommand
             reload(sDNAUISpec)
             reload(runsdnacommand)
-        except ImportError:
+            QgsMessageLog.logMessage("Successfully imported sDNA modules", 'sDNA')
+        except ImportError, e:
+            QgsMessageLog.logMessage(str(e), 'sDNA')
             self.installsdna()
             return
         self.runsdnacommand = runsdnacommand.runsdnacommand
         
         # load tools
-        self.alglist = []
         for toolclass in sDNAUISpec.get_tools():
             qgistool = SDNAAlgorithm(toolclass(),self)
-            self.alglist += [qgistool]
+            self.algs += [qgistool]
+           
 
-    def initializeSettings(self):
-        AlgorithmProvider.initializeSettings(self)
-        
-    def unload(self):
-        AlgorithmProvider.unload(self)
-        
-    def getName(self):
-        return 'sDNA'
-
-    def getDescription(self):
-        return 'Spatial Design Network Analysis'
-
-    def getIcon(self):
-        return AlgorithmProvider.getIcon(self)
-
-    def _loadAlgorithms(self):
-        self.algs = self.alglist
