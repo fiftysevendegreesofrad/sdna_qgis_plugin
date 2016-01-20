@@ -8,7 +8,7 @@ about=Allows use of the sDNA toolbox from QGIS.
 
     An advanced version called sDNA+ is also available which can use arbitrary metrics from a user formula (hybrid metrics) as well as having presets for pedestrian, cyclist and vehicle use, and the ability to output analysis geometries (network radii, geodesics, convex hulls; one-to-one, one-to-many, one-to-all or all-to-all).
 category=Analysis
-version=3.0
+version=3.0.1
 qgisMinimumVersion=2.0
 
 author=Crispin Cooper
