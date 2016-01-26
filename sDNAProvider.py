@@ -158,7 +158,7 @@ class sDNAProvider(AlgorithmProvider):
     def initializeSettings(self):
         AlgorithmProvider.initializeSettings(self)
         ProcessingConfig.addSetting(Setting(self.getDescription(),sDNAProvider.SDNAFOLDERSETTING,
-            "sDNA installation folder","c:\\Program Files (x86)\\sDNA",valuetype=Setting.FOLDER))
+            "sDNA installation folder","c:\\Program Files (x86)\\Cardiff University\\sDNA",valuetype=Setting.FOLDER))
         
     def unload(self):
         AlgorithmProvider.unload(self)
