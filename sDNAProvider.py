@@ -111,8 +111,6 @@ class SDNAAlgorithm(GeoAlgorithm):
                 args[vn] = self.selectvaroptions[vn][args[vn]]
             if args[vn]==None:
                 args[vn]=""
-        args["arcxytol"]=""
-        args["arcztol"]=""
         
         syntax = self.sdnatool.getSyntax(args)
         
