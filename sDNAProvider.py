@@ -118,10 +118,10 @@ class SDNAAlgorithm(GeoAlgorithm):
         converted_inputs={}
         for name,path in syntax["inputs"].iteritems():
             if path:
-                # convert inputs to shapefiles if they aren't already
+                # convert inputs to shapefiles if they aren't already shp or csv
                 # do this by hand rather than using dataobjects.exportVectorLayer(processing.getObject(path))
                 # as we want to ignore selection if present
-                if path[-4:].lower()!=".shp":
+                if path[-4:].lower() not in [".shp",".csv"]:
                     progress.setInfo("Converting input to shapefile: "+path)
                     tempfile = system.getTempFilename("shp")
                     ret = QgsVectorFileWriter.writeAsVectorFormat(processing.getObject(path), tempfile, "utf-8", None, "ESRI Shapefile")
@@ -156,7 +156,7 @@ class sDNAProvider(AlgorithmProvider):
     def initializeSettings(self):
         AlgorithmProvider.initializeSettings(self)
         ProcessingConfig.addSetting(Setting(self.getDescription(),sDNAProvider.SDNAFOLDERSETTING,
-            "sDNA installation folder","c:\\Program Files (x86)\\Cardiff University\\sDNA",valuetype=Setting.FOLDER))
+            "sDNA installation folder","c:\\Program Files (x86)\\sDNA",valuetype=Setting.FOLDER))
         
     def unload(self):
         AlgorithmProvider.unload(self)
