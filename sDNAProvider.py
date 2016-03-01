@@ -131,7 +131,10 @@ class SDNAAlgorithm(GeoAlgorithm):
                     converted_inputs[name]=path
         syntax["inputs"]=converted_inputs
                
-        self.provider.runsdnacommand(syntax,self.provider.sdnapath,progress)
+        retval = self.provider.runsdnacommand(syntax,self.provider.sdnapath,progress)
+        
+        if retval!=0:
+            progress.setInfo("ERROR: PROCESS DID NOT COMPLETE SUCCESSFULLY")
         
 class sDNAProvider(AlgorithmProvider):
 
