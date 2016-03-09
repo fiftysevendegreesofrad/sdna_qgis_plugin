@@ -130,8 +130,14 @@ class SDNAAlgorithm(GeoAlgorithm):
                 else:
                     converted_inputs[name]=path
         syntax["inputs"]=converted_inputs
-               
-        retval = self.provider.runsdnacommand(syntax,self.provider.sdnapath,progress)
+        
+        # figure out where the qgis python installation is
+        qgisbase = os.path.dirname(os.path.dirname(sys.executable))
+        pythonexe = qgisbase+os.sep+"bin"+os.sep+"python.exe"
+        pythonbase = qgisbase+os.sep+"apps"+os.sep+"python27"+os.sep
+        pythonpath = ";".join([pythonbase+x for x in ["","Lib","Lib/site-packages"]])
+        
+        retval = self.provider.runsdnacommand(syntax,self.provider.sdnapath,progress,pythonexe,pythonpath)
         
         if retval!=0:
             progress.setInfo("ERROR: PROCESS DID NOT COMPLETE SUCCESSFULLY")
