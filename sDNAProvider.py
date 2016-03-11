@@ -37,7 +37,7 @@ from processing.tools import dataobjects, vector, system
 from qgis.core import QgsVectorFileWriter, QgsMessageLog
 
 sdna_to_qgis_vectortype = {"Polyline":ParameterVector.VECTOR_TYPE_LINE,None:ParameterVector.VECTOR_TYPE_ANY}
-sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER}
+sdna_to_qgis_fieldtype = {"Numeric":ParameterTableField.DATA_TYPE_NUMBER,"String":ParameterTableField.DATA_TYPE_STRING}
 
 class SDNAAlgorithm(GeoAlgorithm):
     
