@@ -8,20 +8,20 @@ about=Allows use of the sDNA toolbox from QGIS.
 
     An advanced version called sDNA+ is also available which can use arbitrary metrics from a user formula (hybrid metrics) as well as having presets for pedestrian, cyclist and vehicle use, and the ability to output analysis geometries (network radii, geodesics, convex hulls; one-to-one, one-to-many, one-to-all or all-to-all).  Version 3.1 adds OD Matrix input and Skim Matrix output.
     
-    Development of this plugin was funded by the ESRC Impact Accelerator grant "sDNA for all".  The principal investigator was Alain Chiaradia and the co-investigator Crispin Cooper.
+    Development of this plugin was funded by the ESRC Impact Accelerator grant "sDNA for all".  The principal investigator was Alain Chiaradia and the co-investigator Crispin Cooper, based at Cardiff University department of Geography and Planning and the Sustainable Places Research Institute.
     
 category=Analysis
-version=3.1.0
+version=3.1.1
 qgisMinimumVersion=2.0
 
 author=Crispin Cooper
 email=zcrispin0.qgisplugins@tropic.org.uk
 
-tags=analysis,processing,network,sdna
+tags=analysis,processing,network,sdna,evaluation,urban design options appraisal
 
 homepage=http://www.cardiff.ac.uk/sdna
 tracker=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin/issues
 repository=https://github.com/fiftysevendegreesofrad/sdna_qgis_plugin
 
-experimental=True
+experimental=False
 deprecated=False
