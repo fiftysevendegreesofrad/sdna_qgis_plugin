@@ -71,6 +71,8 @@ class SDNAAlgorithm(GeoAlgorithm):
                 self.addOutput(OutputVector(varname,self.tr(displayname)))
             elif datatype=="InFile":
                 self.addParameter(ParameterFile(varname, self.tr(displayname), False, not required, filter))
+            elif datatype=="MultiInFile":
+                self.addParameter(ParameterFile(varname, self.tr(displayname), ParameterMultipleInput.TYPE_FILE, not required))
             elif datatype=="OutFile":
                 self.addOutput(OutputFile(varname,self.tr(displayname),filter))
             elif datatype=="Field":
