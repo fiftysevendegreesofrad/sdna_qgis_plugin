@@ -11,10 +11,10 @@ about=Allows use of the sDNA toolbox from QGIS.
     Development of this plugin was funded by the ESRC Impact Accelerator grant "sDNA for all".  The principal investigator was Alain Chiaradia and the co-investigator Crispin Cooper, based at Cardiff University department of Geography and Planning and the Sustainable Places Research Institute.
     
 category=Analysis
-version=4.0.0
+version=4.0.1
 qgisMinimumVersion=2.0
 
-author=Crispin Cooper
+author=Crispin Cooper, Alain Chiaradia
 email=zcrispin0.qgisplugins@tropic.org.uk
 
 tags=analysis,processing,network,sdna,evaluation,urban design options appraisal
