@@ -29,6 +29,10 @@ from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
 import os,sys
+try:
+	reload
+except NameError:
+    from importlib import reload 
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import *
